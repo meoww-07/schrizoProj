@@ -1,0 +1,12 @@
+# Outer-CV repeat seeds (protocol §5.3), one per line, in repeat order.
+# Fixed before any model was fitted; do not edit after the protocol lock.
+11
+23
+37
+41
+53
+67
+79
+83
+97
+101

@@ -1,0 +1,19 @@
+# Imaging data and derivatives (data-use terms; size)
+data/raw/*
+data/derivatives/*
+!data/raw/.gitkeep
+!data/derivatives/.gitkeep
+
+# Python / tooling
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Individual-level tables (participant IDs with diagnosis/scores).
+# Derived from the CC BY-NC COBRE release; kept out of the public repo by default.
+data/participants_manifest_niak.csv
+results/predictions/predictions_niak_functional.csv
+results/metrics/stability_niak_functional.csv

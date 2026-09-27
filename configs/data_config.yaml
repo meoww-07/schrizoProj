@@ -1,0 +1,80 @@
+# Data locations, labels, QC rules and preprocessing versions (protocol §2–§3).
+# Paths are relative to the project root. Fields marked VERIFY are filled in
+# during the dataset audit, before the protocol lock, and not changed after it.
+
+software:
+  fmriprep_container: "VERIFY: exact tag, e.g. nipreps/fmriprep:<version>"
+  freesurfer: "bundled with the fMRIPrep container; record the version fMRIPrep reports"
+  output_space: MNI152NLin2009cAsym:res-2
+
+bids_dir: data/raw/cobre_bids
+fmriprep_dir: data/derivatives/fmriprep
+freesurfer_dir: data/derivatives/fmriprep/sourcedata/freesurfer
+features_dir: data/derivatives/features
+manifest: data/participants_manifest.csv
+
+phenotype:
+  path: data/raw/cobre_bids/participants.tsv   # VERIFY
+  sep: "\t"
+  id_column: participant_id                     # VERIFY
+  diagnosis_column: diagnosis                   # VERIFY
+  age_column: age                               # VERIFY
+  sex_column: sex                               # VERIFY
+  subtype_column: null        # column holding strict_patient_values, if not diagnosis_column
+  medication_column: null     # descriptive only (protocol §8)
+
+# Raw phenotype values treated as missing, in addition to empty cells and NaN.
+# All matching (here and in the maps below) ignores case and surrounding whitespace;
+# numbers are compared as integers where possible (1.0 matches 1).
+missing_values: ["", "na", "n/a", "nan", "none", "null", "unknown", "not reported", "missing", "-", "?"]
+
+# Raw diagnosis values -> category. Leave patient/control empty until the audit prints
+# the raw values; it refuses to run otherwise. Any non-missing value that is not listed
+# here stops the audit (it is never silently treated as missing).
+label_map:
+  patient: []
+  control: []
+  exclude: []                 # known non-analysable values (e.g. Disenrolled) -> reason excluded_label
+strict_patient_values: []     # sensitivity analysis: strict schizophrenia only
+
+sex_map:                      # VERIFY against raw values (NIAK cobre_model_group.csv uses 0 = male, 1 = female)
+  male: [M, Male]
+  female: [F, Female]
+
+functional:
+  task: rest
+  space: MNI152NLin2009cAsym
+  resolution: "2"
+  atlas:
+    name: schaefer_2018
+    n_rois: 100
+    yeo_networks: 7
+    resolution_mm: 2
+    # Optional: the same atlas resampled to MNI152NLin2009cAsym (e.g. from
+    # TemplateFlow) for exact space matching. labels_tsv needs columns: index, name.
+    labels_img: null
+    labels_tsv: null
+  # Keyword arguments for nilearn.interfaces.fmriprep.load_confounds_strategy.
+  denoise:
+    primary: {denoise_strategy: scrubbing, fd_threshold: 0.5, std_dvars_threshold: 1.5, scrub: 5}
+    simple: {denoise_strategy: simple}
+    scrubbing_gsr: {denoise_strategy: scrubbing, fd_threshold: 0.5, std_dvars_threshold: 1.5, scrub: 5, global_signal: basic}
+
+qc:
+  max_mean_fd_mm: 0.55
+  max_fd_mm: 5.0
+  min_retained_seconds: 180
+  stringent_mean_fd_mm: 0.25    # sensitivity analysis 5
+  structural_visual_qc: data/qc/structural_visual_qc.csv
+
+confound_columns: [age, sex_male, mean_fd, eTIV, surface_holes, tsnr_median]
+
+# Preprocessed functional release used while the raw T1 scans are pending (notebook 03b).
+# "COBRE preprocessed with NIAK 0.12.14", figshare article 1160600, CC BY-NC.
+niak:
+  archive: "C:/Users/diksh/Downloads/1160600.zip"
+  phenotype_file: cobre_model_group.csv
+  qc:
+    min_retained_seconds: 180   # primary rule (protocol D8)
+    sensitivity_seconds: 120    # NIAK's own criterion (60 volumes), reported as a sensitivity analysis
+  confound_columns: [age, sex_male, mean_fd]   # eTIV/surface holes/tSNR need the structural data

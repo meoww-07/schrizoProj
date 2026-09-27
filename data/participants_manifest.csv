@@ -1,0 +1,1 @@
+participant_id,diagnosis_raw,label,strict_patient,age,sex_raw,sex_male,n_t1,n_bold,n_preproc_bold,fs_complete,struct_visual_qc,mean_fd,max_fd,n_volumes,n_retained,tr,retained_seconds,func_qc_pass,exclusion_reasons,included

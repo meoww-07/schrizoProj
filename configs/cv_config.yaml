@@ -1,0 +1,28 @@
+# Validation and inference design (protocol §5.3, §7).
+# Part of the locked protocol: any change after the lock is a deviation (protocol §13).
+
+outer:
+  scheme: repeated_stratified_kfold
+  n_splits: 5
+  n_repeats: 10                 # must equal the number of seeds in seeds_file
+
+inner:
+  scheme: stratified_kfold
+  n_splits: 5
+  # inner seed = SeedSequence([outer_seed, outer_fold]).generate_state(1)[0]
+
+stratify_on: label
+seeds_file: configs/seeds.txt
+
+permutation:
+  n_permutations: 1000
+  seed: 20260912                # permutation i uses default_rng([seed, i])
+  p_value: plus_one             # (1 + #{null >= observed}) / (1 + B)
+  primary_null: structural_block    # permute rows of Xs; labels, Xf, confounds fixed
+  chance_null: labels               # every non-sensitivity model vs chance
+
+inference:
+  alpha: 0.05
+  min_meaningful_delta_auc: 0.02    # delta, protocol §7.3 (decision D2)
+  interval: nadeau_bengio_corrected # variance factor 1/J + n_test/n_train
+  secondary_correction: holm

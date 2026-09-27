@@ -1,0 +1,68 @@
+# Model specification (protocol §4–§5).
+# Part of the locked protocol: any change after the lock is a deviation (protocol §13).
+
+software:
+  python: "3.12.10"
+  numpy: "2.5.1"
+  scipy: "1.18.0"
+  pandas: "3.0.5"
+  scikit-learn: "1.8.0"
+  nilearn: "0.14.1"
+  nibabel: "5.4.2"
+  joblib: "1.5.3"
+  mkl_implementation: "this repository (src/kernels.py, src/models.py)"
+
+svm:
+  estimator: sklearn.svm.SVC        # kernel="precomputed": hinge loss, L2 penalty
+  C_grid: [0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+  class_weight: balanced
+
+kernel:
+  feature_scaling: zscore           # StandardScaler fit on training rows only
+  type: linear
+  normalization: trace              # divide by mean diagonal of the training kernel
+  centering: false
+
+mkl:
+  weight_constraint: simplex        # beta >= 0, sum(beta) = 1
+  # Weight of the FIRST modality listed in a grid model; the second gets 1 - beta.
+  # 0.0 and 1.0 reproduce the unimodal models, 0.5 reproduces equal weighting.
+  beta_grid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+  selection_metric: roc_auc         # mean inner-CV AUC, chosen jointly with C
+  extra_regularization: none        # only the simplex constraint and grid resolution
+  tie_break: [smallest_C, beta_closest_to_0.5]
+
+threshold:
+  method: youden_inner_oof          # Youden's J on pooled inner out-of-fold scores
+  tie_break: closest_to_zero
+  sensitivity_threshold: 0.0
+
+feature_selection: none
+
+stacking:
+  meta_model: logistic_regression   # StandardScaler + LogisticRegression (L2)
+  meta_C: 1.0
+
+primary_comparison:
+  model: mkl
+  comparator: functional
+
+secondary_comparisons:
+  - [mkl, early_fusion]
+  - [mkl, equal_weight]
+  - [mkl, stacking]
+  - [mkl, structural]
+
+# type: kernel   -> KernelSVM; weighting in {fixed, grid, alignment, concat}
+# type: stacking -> Stacking over the listed kernel models
+models:
+  - {name: structural, role: baseline, type: kernel, modalities: [structural]}
+  - {name: functional, role: primary_comparator, type: kernel, modalities: [functional]}
+  - {name: early_fusion, role: secondary, type: kernel, weighting: concat, modalities: [structural, functional]}
+  - {name: equal_weight, role: secondary, type: kernel, weighting: fixed, modalities: [structural, functional], weights: {structural: 0.5, functional: 0.5}}
+  - {name: mkl, role: primary, type: kernel, weighting: grid, modalities: [structural, functional]}
+  - {name: stacking, role: secondary, type: stacking, base_models: [structural, functional]}
+  - {name: confounds_only, role: confound_baseline, type: kernel, modalities: [confounds]}
+  - {name: mkl_alignment, role: sensitivity, type: kernel, weighting: alignment, modalities: [structural, functional]}
+  - {name: functional_residualized, role: sensitivity, type: kernel, modalities: [functional], residualize_on: confounds}
+  - {name: mkl_residualized, role: sensitivity, type: kernel, weighting: grid, modalities: [structural, functional], residualize_on: confounds}
