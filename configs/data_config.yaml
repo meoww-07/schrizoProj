@@ -10,6 +10,9 @@ software:
 bids_dir: data/raw/cobre_bids
 fmriprep_dir: data/derivatives/fmriprep
 freesurfer_dir: data/derivatives/fmriprep/sourcedata/freesurfer
+# 148 T1w volumes extracted from COBRE_scan_data.tgz (NITRC/INDI), named sub-<ID>_T1w.nii.gz.
+# Single 3-D volume each, 192x256x256 at 1 mm: the 5 MPRAGE echoes are already combined.
+structural_raw_dir: data/raw/cobre_t1
 features_dir: data/derivatives/features
 manifest: data/participants_manifest.csv
 

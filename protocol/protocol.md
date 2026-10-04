@@ -19,9 +19,9 @@ Each item has a value the code already implements. Confirm or change each, then 
 | D1 | Patient definition (primary) | All COBRE patient-group participants. Strict schizophrenia only as a sensitivity analysis. | The NIAK phenotype file carries no diagnostic subtype, so the strict-schizophrenia sensitivity analysis needs the official COBRE phenotype file | `data_config.yaml: label_map` |
 | D2 | Minimum meaningful ΔAUC (δ) | 0.02 | **to confirm** | `cv_config.yaml: inference.min_meaningful_delta_auc` |
 | D3 | Processing route: functional | Verified precomputed derivatives: COBRE preprocessed with **NIAK 0.12.14** (figshare 1160600) | settled by data availability (§13) | `data_config.yaml: niak` |
-| D3b | Processing route: structural | FreeSurfer (or FastSurfer) on the raw COBRE T1 scans, once access is granted | **pending data** | `data_config.yaml: software` |
+| D3b | Processing route: structural | **FastSurfer VINN segmentation** (`FastSurferCNN.run_prediction`, PyTorch 2.7.1+cu128 on a local RTX 5060) on the 148 raw COBRE T1 scans | **settled** (§3.2, §13): surfaces were out of reach, segmentation runs in ~1 min per participant | `data_config.yaml: structural_raw_dir` |
 | D4 | Functional atlas | Schaefer 2018, 100 parcels, 7 networks → 4,950 edges | in use; atlas-space caveat in §3.3 | `data_config.yaml: functional.atlas` |
-| D5 | Structural features | Desikan–Killiany thickness (68) + surface area (68) + 14 subcortical volumes = 150, each area/volume ÷ eTIV | **depends on D3b.** FastSurfer produces the DKT atlas (31 regions per hemisphere ≈ 138 features) | §3.2 |
+| D5 | Structural features | **Regional volumes only**: DKT cortical regions plus the 14 subcortical structures, each ÷ that participant's total segmented brain volume. Count reported after extraction. | **changed** (§13). Cortical thickness and surface area need surface reconstruction (hours per participant); segmentation gives volumes in ~1 min | §3.2 |
 | D6 | Decision threshold | Youden's J on pooled inner out-of-fold scores | in use | `model_config.yaml: threshold` |
 | D7 | Feature selection | None in the primary analysis | in use | §5.5 |
 | D8 | Functional QC rule | **≥ 180 s of usable scan time** after NIAK's scrubbing (primary); ≥ 120 s, NIAK's own criterion, as a labelled sensitivity analysis | **to confirm**; consequences in §2.3 | `data_config.yaml: niak.qc` |
@@ -55,7 +55,7 @@ The analysis draws on two components of the same COBRE sample.
 | Component | Source | Status | Terms |
 |---|---|---|---|
 | **Functional (Xf)** | Bellec, P., *COBRE preprocessed with NIAK 0.12.4*, figshare article 1160600, version 15 (published 2015-01-31, modified 2023-05-31): 146 participants (72 patients, 74 controls), preprocessed resting-state BOLD plus per-participant confound files and a phenotype table. Archive SHA-256 `b4fcb4a1572ecd3cd4434ff495cc13880f84222caf01b7cac3bdd7344e1ef816`, verified 2026-09-27. | **held** | CC BY-NC; cite INDI/COBRE and the release |
-| **Structural (Xs)** | Raw T1w (multi-echo MPRAGE) from the COBRE release on NITRC/INDI (`COBRE_scan_data.tgz`), or the same data through SchizConnect/COINS | **access requested** | CC BY-NC; NITRC account plus project membership |
+| **Structural (Xs)** | Raw T1w scans from the COBRE release on NITRC/INDI (`COBRE_scan_data.tgz`, downloaded 2026-10-04, SHA-256 `bf0e7a0fb44bc5ad9a4339561024fcc1f2e05e6d82da85a9889cacf36a3881dc`): 148 participants, one 3-D volume each at 1 mm. The archive's resting-state runs are not used. | **held** | CC BY-NC; NITRC account plus 1000 Functional Connectomes membership |
 | Official phenotype (`COBRE_phenotypic_data.csv`) | NITRC/INDI | pending | needed for diagnostic subtype (D1) |
 | Not used | BASC connectomes (figshare 1450804) | held | precomputed with a different atlas; would replace the prespecified feature definition |
 
@@ -83,8 +83,10 @@ Criterion 4 applies only once the structural data arrive; the functional-only an
 | Participants in the NIAK release | 146 | 72 | 74 |
 | **Usable: ≥ 180 s retained (D8 primary)** | **82** | **31** | **51** |
 | Usable: ≥ 120 s retained (sensitivity) | 101 | 43 | 58 |
-| Structural available | pending | | |
-| **Final intersection** | pending | | |
+| T1 scans available | 148 | | |
+| Both modalities present | 146 | 72 | 74 |
+| **Final intersection, ≥ 180 s rule** | **82** | **31** | **51** |
+| Final intersection, ≥ 120 s rule | 101 | 43 | 58 |
 
 **This rule has a cost that must be stated in the paper.** Patients moved more, so the 180 s rule removes 41 of 72 patients (57%), against 23 of 74 controls (31%). The surviving sample is motion-matched (mean FD 0.203 mm in controls vs 0.209 mm in patients) but is no longer representative of COBRE's patients: it keeps those who could stay still. The 120 s rule keeps more participants but readmits a motion difference between groups. Both are reported (§8, §15).
 
@@ -128,17 +130,18 @@ Criterion 4 applies only once the structural data arrive; the functional-only an
 - **What is recorded:** pipeline versions, atlas version, confound strategy, QC thresholds and the feature-construction code (this repository).
 - **What is not allowed:** preprocessing choices are never changed based on predictive performance. Any change after the lock is a deviation (§13).
 
-### 3.2 Structural features (Xs) — pending data
-**Features (D5):** mean cortical thickness and surface area for each cortical region, plus 14 subcortical volumes from `aseg` (bilateral thalamus, caudate, putamen, pallidum, hippocampus, amygdala, accumbens).
-- With FreeSurfer's Desikan–Killiany atlas: 68 + 68 + 14 = **150** features.
-- With FastSurfer's DKT atlas: 62 + 62 + 14 = **138** features.
-- The actual count is reported after extraction, not assumed.
+### 3.2 Structural features (Xs), `notebooks/02b`
+**Input.** The 148 raw T1w scans from `COBRE_scan_data.tgz` (NITRC/INDI), one 3-D volume each at 192 × 256 × 256, 1 mm. The five MPRAGE echoes are already combined in this release, so no root-mean-square step is needed.
 
-**Head-size adjustment:** surface area and volumes are divided by eTIV. This uses only the participant's own eTIV, so it cannot leak across folds. Thickness is left unadjusted.
+**Pipeline (D3b).** FastSurfer's VINN segmentation (`FastSurferCNN.run_prediction`), PyTorch 2.7.1+cu128 on a local GPU, roughly one minute per participant. The surface stream is **not** run.
 
-**Quality variable:** `SurfaceHoles` from `aseg.stats`, a linear function of the Euler number, is recorded as a quality covariate and enters the confound set.
+**Features (D5).** Regional **volumes** from the DKT whole-brain segmentation: the cortical `ctx-*` regions plus the 14 subcortical structures (bilateral thalamus, caudate, putamen, pallidum, hippocampus, amygdala, accumbens). The count is reported after extraction rather than assumed.
 
-**Multi-echo note:** COBRE's MPRAGE has 5 echoes. If the released file contains all echoes, they are combined (root-mean-square) into one volume before reconstruction; this is recorded.
+**What was given up, and why.** The original plan was cortical thickness and surface area from FreeSurfer's Desikan–Killiany atlas. Those need surface reconstruction: 6–10 hours per participant with FreeSurfer, about an hour with FastSurfer's surface module, so days to weeks for this sample, with binaries that do not run natively on Windows. Volume mixes thickness with surface area and is therefore a blunter measure, and cortical thinning is the better-replicated finding in schizophrenia. This is a real loss of sensitivity, logged in §13, and decided before any structural result was seen.
+
+**Head-size adjustment.** Without surfaces there is no FreeSurfer eTIV, so each regional volume is divided by that participant's **total segmented brain volume**. Like the eTIV ratio, this uses only the participant's own data and cannot leak across folds.
+
+**Quality variables.** FreeSurfer surface holes are unavailable without surfaces. Total segmented brain volume is recorded per participant, and FastSurfer's volume-based QC check is logged for each run.
 
 ### 3.3 Functional features (Xf), `notebooks/03b`
 **What the release already did** (not repeated by us): slice-timing and motion correction; coregistration to each participant's T1 and non-linear normalization to **MNI152 2009a symmetric**, resampled to **3 mm**; **scrubbing** of volumes with FD > 0.5 mm; **nuisance regression** of slow drifts (0.01 Hz cosine basis), principal components of the motion parameters and their squares, and mean white-matter and ventricle signals; **6 mm smoothing**.
@@ -201,7 +204,7 @@ All kernel models use the same classifier, `sklearn.svm.SVC(kernel="precomputed"
 | nilearn / nibabel | 0.14.1 / 5.4.2 |
 | joblib / PyYAML | 1.5.3 / 6.0.3 |
 | Upstream functional preprocessing | NIAK under Octave 3.8.1 and MINC toolkit 0.3.18, fixed by the release. Version strings differ between sources: the figshare title says **0.12.4**, the archive README says **0.12.14**; both are recorded in `data/README.md`, and the README governs. |
-| Structural pipeline | pinned at lock (D3b) |
+| Structural pipeline | FastSurfer (GitHub `Deep-MI/FastSurfer`, segmentation stream only) with PyTorch 2.7.1+cu128 on an NVIDIA RTX 5060; h5py 3.16.0, yacs, scikit-image 0.26.0 |
 | MKL | implemented in this repository (`notebooks/04`, mirrored in `src/`). No third-party MKL package: with two kernels, an exact search over the weight simplex is transparent and reproducible. |
 
 ### 5.2 Kernel and MKL specification
@@ -405,7 +408,8 @@ mkl-project/
 ├── notebooks/
 │   ├── 00_protocol_overview.ipynb          objective, decisions, versions, lock hashes
 │   ├── 01_dataset_audit.ipynb              sample rule, value handling, exclusions, motion
-│   ├── 02_structural_features.ipynb        FreeSurfer stats → Xs (pending data)
+│   ├── 02_structural_features.ipynb        FreeSurfer-surface route (not used; parsing demos)
+│   ├── 02b_fastsurfer_structural_features.ipynb  FastSurfer segmentation → Xs (volumes)
 │   ├── 03_functional_features.ipynb        fMRIPrep route (not used; helpers reused)
 │   ├── 03b_niak_functional_features.ipynb  NIAK release → manifest + Xf
 │   ├── 04_kernels_and_models.ipynb         SVM, kernels, MKL, stacking
@@ -413,7 +417,8 @@ mkl-project/
 │   ├── 06_metrics_and_statistical_inference.ipynb   metrics, ΔAUC, permutations, decision rule
 │   ├── 07_stability_and_confounds.ipynb    stability, confounds, sensitivity analyses
 │   ├── 08_visual_exploration.ipynb         results figures
-│   └── 09_functional_only_analysis.ipynb   preliminary exploratory run (§15)
+│   ├── 09_functional_only_analysis.ipynb   preliminary exploratory run (§15)
+│   └── 10_multimodal_mkl_analysis.ipynb    the primary multimodal analysis (H1, H2)
 ├── src/              same code as modules; tests/ exercises it
 ├── data/             raw/ derivatives/ qc/ participants_manifest*.csv (data not tracked)
 ├── results/          predictions/ metrics/ figures/ permutation_tests/
@@ -429,6 +434,7 @@ mkl-project/
 | 2026-09-18 | §3.1, §3.3 (D3), D9 | Functional features taken from the verified NIAK 0.12.14 release (figshare 1160600) instead of fMRIPrep. Denoising sensitivity analyses and tSNR unavailable; the functional-arm confound set is age, sex, mean FD. | The raw COBRE T1 scans were not yet available, and fMRIPrep needs Docker and storage this machine lacks. | Before: no outcome data seen |
 | 2026-09-18 | §1, §7 | Preliminary **functional-only** analysis before lock (notebook 09): functional model and confounds-only baseline, 500 label permutations, both motion rules. Labelled exploratory. | To validate the pipeline on real data while structural data are pending. | Before lock; results exploratory (§15) |
 | 2026-09-26 | §2.3, §3.3 (D8) | Functional QC changed from an FD-threshold rule to a **retained-scan-time** rule, because the release is already scrubbed and ships no per-volume FD. | The derivative's format makes the original rule inapplicable. | Before lock; consequences reported in §2.3 |
+| 2026-10-04 | §3.2 (D3b, D5, D9) | Structural features are **regional volumes** from FastSurfer's VINN segmentation, not cortical thickness and surface area from FreeSurfer surfaces. Head size is normalized by total segmented brain volume instead of eTIV, and FreeSurfer surface holes leave the confound set. | Surface reconstruction costs 1–10 hours per participant and needs binaries that do not run natively on this machine; segmentation takes about a minute per participant on the local GPU. The cost in sensitivity (thickness is the better-replicated measure) is stated in §3.2 and §10. | Before: decided and recorded before any structural feature was linked to a label |
 
 ---
 
