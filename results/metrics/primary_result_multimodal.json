@@ -1,0 +1,20 @@
+{
+  "comparison": "mkl - functional",
+  "n_participants": 82,
+  "n_patients": 31,
+  "n_controls": 51,
+  "n_features": {
+    "structural": 76,
+    "functional": 4950,
+    "confounds": 3
+  },
+  "mean_delta_auc": 0.0008917748917748969,
+  "ci_low": -0.12870322219719915,
+  "ci_high": 0.13048677198074893,
+  "p_block_permutation": 0.11788211788211789,
+  "n_permutations": 1000,
+  "delta": 0.02,
+  "alpha": 0.05,
+  "median_beta_structural": 0.3,
+  "result": "inconclusive"
+}

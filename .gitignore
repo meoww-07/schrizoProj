@@ -17,3 +17,5 @@ venv/
 data/participants_manifest_niak.csv
 results/predictions/predictions_niak_functional.csv
 results/metrics/stability_niak_functional.csv
+results/predictions/predictions_multimodal.csv
+results/metrics/stability_multimodal.csv

@@ -471,6 +471,40 @@ Run on 2026-09-18 with the functional data only, before the lock, and reported h
 
 **Reading.** Connectivity beats chance; confounds alone do not, under the motion-matched primary sample. "Better than confounds alone" is suggestive but not established. These numbers do not test H1, and they do not license changes to §7 rules.
 
+### 15.2 Multimodal analysis (notebook 10, 2026-10-05)
+
+Sample: 82 participants (31 patients, 51 controls) with 76 structural volume features, 4,950 connectivity features and 3 confounds. Lock record (§14) incomplete at the time of running, so these results are **exploratory** under §13.
+
+| Model | ROC-AUC | Balanced accuracy | p (label permutation) |
+|---|---|---|---|
+| early fusion | 0.695 | 0.610 | 0.008 |
+| **mkl** | **0.689** | 0.603 | 0.012 |
+| functional | 0.688 | 0.598 | 0.008 |
+| equal weight | 0.687 | 0.607 | 0.016 |
+| structural | 0.662 | 0.566 | 0.020 |
+| stacking | 0.658 | 0.604 | 0.016 |
+| confounds only | 0.487 | 0.490 | 0.578 |
+
+*Label-permutation p-values above come from the first 250 permutations; the full 1,000 are being computed and will be substituted.*
+
+**Primary test (H1), structural-block null, 1,000 permutations:**
+
+| Quantity | Value |
+|---|---|
+| mean ΔAUC (MKL − functional) | **+0.0009** |
+| corrected 95% CI | [−0.1287, +0.1305] |
+| p (one-sided, plus-one) | 0.118 |
+| δ | 0.02 |
+| **Verdict under §7.3** | **Inconclusive** |
+
+**Secondary comparisons (H2).** MKL versus early fusion −0.006, equal weight +0.002, stacking +0.031, structural +0.027; every Holm-adjusted p = 1.0.
+
+**Learned weights.** MKL's structural weight β had median 0.30 (mean 0.34, full range 0–1); β = 0 in 12% of folds and β = 1 in 2%. Fusion therefore did not collapse into either unimodal model. For contrast, early fusion's implicit structural weight is 0.015, fixed by feature counts.
+
+**Stability.** Median decision-score SD across repeats 0.59; 14 of 82 participants classified identically in all 10 repeats.
+
+**Reading.** Every imaging model beats chance while the confound-only model does not, so the classification is not explained by age, sex or head motion in this motion-matched sample. Fusion adds nothing detectable: all strategies fall within 0.04 AUC of each other and of the unimodal models. The verdict is **inconclusive rather than negative**, because the corrected interval (±0.13) is roughly six times wider than δ: with 31 patients this design cannot resolve the difference it set out to measure. Per §9, this is a prespecified, reportable outcome and not a failed experiment.
+
 ---
 
 ## Appendix A. Changes from the working draft
