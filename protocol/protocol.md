@@ -475,17 +475,17 @@ Run on 2026-09-18 with the functional data only, before the lock, and reported h
 
 Sample: 82 participants (31 patients, 51 controls) with 76 structural volume features, 4,950 connectivity features and 3 confounds. Lock record (§14) incomplete at the time of running, so these results are **exploratory** under §13.
 
-| Model | ROC-AUC | Balanced accuracy | p (label permutation) |
+| Model | ROC-AUC | Balanced accuracy | p (label permutation, B = 1,000) |
 |---|---|---|---|
-| early fusion | 0.695 | 0.610 | 0.008 |
-| **mkl** | **0.689** | 0.603 | 0.012 |
-| functional | 0.688 | 0.598 | 0.008 |
-| equal weight | 0.687 | 0.607 | 0.016 |
-| structural | 0.662 | 0.566 | 0.020 |
-| stacking | 0.658 | 0.604 | 0.016 |
-| confounds only | 0.487 | 0.490 | 0.578 |
+| early fusion | 0.695 | 0.610 | 0.007 |
+| **mkl** | **0.689** | 0.603 | 0.013 |
+| functional | 0.688 | 0.598 | 0.009 |
+| equal weight | 0.687 | 0.607 | 0.012 |
+| structural | 0.662 | 0.566 | 0.017 |
+| stacking | 0.658 | 0.604 | 0.019 |
+| confounds only | 0.487 | 0.490 | 0.565 |
 
-*Label-permutation p-values above come from the first 250 permutations; the full 1,000 are being computed and will be substituted.*
+Both nulls were computed at the protocol's full 1,000 permutations, each re-running the complete nested pipeline.
 
 **Primary test (H1), structural-block null, 1,000 permutations:**
 
